@@ -1,0 +1,1582 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DEBUG — Invitation</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    :root {
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      --ink: #111111;
+      --bg-light: #f2f2f2;
+      --bg-bright: #fafafa;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #f5f5f5;
+      color: var(--ink);
+      font-family: var(--font-sans);
+      user-select: none;
+    }
+
+    /* Full-Viewport High-DPI Isometric Stage */
+    .stage-wrapper {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    #isoCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Minimal Monochrome Status Pill (Top-Center) */
+    .status-pill {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      z-index: 30;
+      transform: translateX(-50%) translateY(-10px);
+      opacity: 0;
+      pointer-events: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      background: rgba(17, 17, 17, 0.92);
+      color: #fafafa;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      white-space: nowrap;
+      transition:
+        opacity 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .status-pill.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 9999px;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22);
+      animation: statusPulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes statusPulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.45;
+        transform: scale(0.85);
+      }
+    }
+
+    /* Bottom-Center Minimal Monochrome Controls */
+    .controls-bar {
+      position: fixed;
+      bottom: max(24px, env(safe-area-inset-bottom, 24px));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      max-width: calc(100vw - 32px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .controls-bar.dimmed {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-50%) translateY(8px);
+    }
+
+    .mono-ctrl-btn {
+      appearance: none;
+      border: 1px solid rgba(17, 17, 17, 0.22);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 11px 18px;
+      min-height: 42px;
+      border-radius: 9999px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      white-space: nowrap;
+      transition:
+        background-color 0.18s ease,
+        color 0.18s ease,
+        border-color 0.18s ease,
+        transform 0.14s ease;
+    }
+
+    .mono-ctrl-btn:hover {
+      background: #111111;
+      color: #ffffff;
+      border-color: #111111;
+    }
+
+    .mono-ctrl-btn:active {
+      transform: scale(0.96);
+    }
+
+    .mono-ctrl-btn.primary {
+      background: #111111;
+      color: #ffffff;
+      border-color: #111111;
+    }
+
+    .mono-ctrl-btn.primary:hover {
+      background: #2b2b2b;
+      border-color: #2b2b2b;
+    }
+
+    .mono-ctrl-btn.hidden-btn {
+      display: none;
+    }
+
+    /* Scene 2: Invitation Overlay Backdrop */
+    .invite-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(10, 10, 10, 0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .invite-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Minimal Monochrome Close Button (Top-Right of Overlay) */
+    .overlay-close-btn {
+      position: fixed;
+      top: max(20px, env(safe-area-inset-top, 20px));
+      right: max(20px, env(safe-area-inset-right, 20px));
+      z-index: 60;
+      width: 44px;
+      height: 44px;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(17, 17, 17, 0.72);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition:
+        background-color 0.18s ease,
+        border-color 0.18s ease,
+        transform 0.16s ease;
+    }
+
+    .overlay-close-btn:hover {
+      background: #ffffff;
+      color: #111111;
+      border-color: #ffffff;
+    }
+
+    .overlay-close-btn:active {
+      transform: scale(0.92);
+    }
+
+    /* Centered Modal Card Entrance Container */
+    .invite-card-shell {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transform: translateY(14px) scale(0.96);
+      opacity: 0;
+      transition:
+        transform 0.42s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.36s ease;
+    }
+
+    .invite-overlay.open .invite-card-shell {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+
+    /* Exact Original Invitation Image Frame */
+    .invite-media-box {
+      background: #ffffff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow:
+        0 30px 70px -15px rgba(0, 0, 0, 0.48),
+        0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    #inviteImg {
+      display: block;
+      width: auto;
+      height: auto;
+      max-width: min(90vw, 520px);
+      max-height: 85vh;
+      object-fit: contain;
+      background: #ffffff;
+    }
+
+    #inviteImg.is-missing {
+      display: none;
+    }
+
+    /* Minimal Monochrome Missing-File Placeholder (Zero Upload UI) */
+    .missing-placeholder {
+      display: none;
+      width: min(86vw, 360px);
+      aspect-ratio: 9 / 14;
+      max-height: 76vh;
+      background: #ffffff;
+      color: #111111;
+      padding: 36px 28px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 14px;
+      border: 1px solid rgba(17, 17, 17, 0.12);
+    }
+
+    .missing-placeholder.visible {
+      display: flex;
+    }
+
+    .missing-code {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      font-weight: 500;
+      padding: 4px 9px;
+      border-radius: 6px;
+      background: #f2f2f2;
+      border: 1px solid rgba(17, 17, 17, 0.12);
+      color: #111111;
+    }
+
+    @media (max-width: 640px) {
+      .status-pill {
+        top: 16px;
+        font-size: 10.5px;
+        padding: 7px 13px;
+      }
+
+      .mono-ctrl-btn {
+        font-size: 11px;
+        padding: 10px 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Scene 1: Full-Viewport 3D Orthographic Isometric USB Animation -->
+  <main class="stage-wrapper" aria-label="DEBUG USB Connection Animation">
+    <canvas id="isoCanvas" aria-label="Isometric USB plug connecting into laptop port"></canvas>
+
+    <!-- Monochrome Connection Status Indicator -->
+    <div id="statusPill" class="status-pill" role="status" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span>USB CONNECTED // DEBUG_KEY</span>
+    </div>
+
+    <!-- Bottom-Center Minimal Monochrome Controls -->
+    <div id="controlsBar" class="controls-bar">
+      <button id="btnReplay" type="button" class="mono-ctrl-btn">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="1 4 1 10 7 10"></polyline>
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+        </svg>
+        <span>REPLAY</span>
+      </button>
+
+      <button id="btnOpenInvite" type="button" class="mono-ctrl-btn primary hidden-btn">
+        <span>OPEN INVITATION</span>
+      </button>
+    </div>
+  </main>
+
+  <!-- Scene 2: Exact invite.png Modal Popup Overlay -->
+  <div
+    id="inviteOverlay"
+    class="invite-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-label="DEBUG Invitation"
+  >
+    <button
+      id="btnCloseOverlay"
+      type="button"
+      class="overlay-close-btn"
+      aria-label="Close invitation"
+      title="Close (Esc)"
+    >
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+
+    <div class="invite-card-shell">
+      <div class="invite-media-box">
+        <!-- Exact Original Exhibition Invitation Image -->
+        <img
+          id="inviteImg"
+          src="./invite.png"
+          alt="DEBUG Invitation"
+        />
+
+        <!-- Minimal Static Placeholder if ./invite.png is absent outside deployment repo -->
+        <div id="missingPlaceholder" class="missing-placeholder" role="alert">
+          <svg class="w-8 h-8 text-neutral-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+          </svg>
+          <span class="missing-code">./invite.png</span>
+          <p class="font-mono text-[11.5px] leading-relaxed text-neutral-500">
+            ./invite.png not found in the same folder.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // 1. DOM ELEMENTS
+      // =========================================================================
+      const canvas = document.getElementById('isoCanvas');
+      const ctx = canvas.getContext('2d');
+
+      const statusPill = document.getElementById('statusPill');
+      const controlsBar = document.getElementById('controlsBar');
+      const btnReplay = document.getElementById('btnReplay');
+      const btnOpenInvite = document.getElementById('btnOpenInvite');
+
+      const inviteOverlay = document.getElementById('inviteOverlay');
+      const btnCloseOverlay = document.getElementById('btnCloseOverlay');
+      const inviteImg = document.getElementById('inviteImg');
+      const missingPlaceholder = document.getElementById('missingPlaceholder');
+
+      // =========================================================================
+      // 2. MATHEMATICALLY STRICT 3D ORTHOGRAPHIC ISOMETRIC ENGINE
+      // =========================================================================
+      // Fixed logical scene coordinate frame (1200 x 720) uniformly fitted to any
+      // viewport aspect ratio (desktop landscape or mobile portrait) with zero distortion.
+      const LOGICAL_W = 1200;
+      const LOGICAL_H = 720;
+
+      // Exact 2:1 orthographic isometric basis vectors:
+      // +X (along laptop side edge, down-right): (+2/sqrt(5), +1/sqrt(5))
+      // +Y (USB insertion axis into laptop, up-right): (+2/sqrt(5), -1/sqrt(5))
+      // +Z (vertical elevation straight up): (0, -1)
+      // Viewer direction C = (+1, -1, +2/sqrt(5)), seeing +X, -Y, and +Z faces.
+      const UX = 0.894427191;
+      const UY = 0.447213595;
+      const VX = 0.894427191;
+      const VY = -0.447213595;
+      const WX = 0.0;
+      const WY = -1.0;
+
+      // Logical world origin (0, 0, 0) = desk plane directly under middle port center
+      const ORIGIN_X = 744;
+      const ORIGIN_Y = 264;
+      const WORLD_SCALE = 1.05;
+
+      // Viewport transform cache updated on resize
+      let viewW = window.innerWidth;
+      let viewH = window.innerHeight;
+      let dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      let fitScale = 1;
+      let fitOffsetX = 0;
+      let fitOffsetY = 0;
+
+      /**
+       * Single unified 3D orthographic projection function used for every vertex.
+       * Guarantees all parallel 3D lines remain strictly parallel in 2D space.
+       * @param {number} x - Axis along laptop side wall (+X = down-right)
+       * @param {number} y - Axis along USB insertion (+Y = up-right into port)
+       * @param {number} z - Vertical axis (+Z = up, z=0 is desk surface)
+       * @returns {{x: number, y: number}} Projected point in logical 1200x720 space
+       */
+      function proj(x, y, z) {
+        return {
+          x: ORIGIN_X + WORLD_SCALE * (UX * x + VX * y + WX * z),
+          y: ORIGIN_Y + WORLD_SCALE * (UY * x + VY * y + WY * z)
+        };
+      }
+
+      // =========================================================================
+      // 3. 3D GEOMETRY CONSTANTS (EXACT ALIGNMENT BETWEEN PORTS & USB PLUG)
+      // =========================================================================
+      const Y_WALL = 0;            // Laptop side face plane
+      const LAPTOP_H = 114;        // Laptop height (z = 0..114)
+      const LAPTOP_X_MIN = -456;   // Front-left end of laptop side wall
+      const LAPTOP_X_MAX = 2400;   // Extends seamlessly past right edge on all screens
+      const LAPTOP_Y_MAX = 2400;   // Extends seamlessly past top edge on all screens
+
+      // Three evenly spaced recessed USB-A ports cut cleanly into y = Y_WALL
+      const PORT_SPACING = 226;
+      const PORT_CENTERS_X = [-PORT_SPACING, 0, PORT_SPACING];
+      const PORT_W = 114;          // Width along X
+      const PORT_Z0 = 24;          // Bottom elevation
+      const PORT_Z1 = 72;          // Top elevation (height = 48)
+      const PORT_DEPTH = 66;       // Recessed cavity depth along +Y
+
+      // Metallic USB-A connector tip (centered at x = 0, vertically centered inside port)
+      const METAL_W = 98;          // Fits cleanly inside PORT_W (114)
+      const METAL_Z0 = 30;         // Centered inside PORT_Z0..PORT_Z1 (center = 48)
+      const METAL_Z1 = 66;         // Height = 36
+      const METAL_LEN = 104;       // Protrusion length along +Y
+
+      // Beveled angular white USB-A housing (centered at x = 0, z center = 48)
+      const BODY_W = 152;          // Full housing width (-76..+76)
+      const BODY_BACK_W = 78;      // Tapered back face width (-39..+39)
+      const BODY_Z0 = 14;          // Bottom elevation above desk
+      const BODY_Z1 = 82;          // Top elevation (height = 68)
+      const BODY_STRAIGHT_LEN = 136;
+      const BODY_CHAMFER_LEN = 32;
+      const BODY_TOTAL_LEN = BODY_STRAIGHT_LEN + BODY_CHAMFER_LEN; // 168
+
+      // Stepped circular strain-relief collar & white cable aligned on x = 0, z = 48
+      const CENTER_Z = (BODY_Z0 + BODY_Z1) * 0.5; // 48
+      const COLLAR_R = 23;
+      const COLLAR_LEN = 24;
+      const CABLE_R = 14.5;
+      const CABLE_END_OFFSET = 2400; // Extends seamlessly off bottom-left on all screens
+
+      // Ink line tokens
+      const INK = '#111111';
+      const STROKE_MAIN = 2.1;
+      const STROKE_INNER = 1.6;
+
+      // Analytical silhouette tangent angles for any cylinder parallel to the Y axis
+      // Extreme projected points perpendicular to screen-space Y axis occur at tan(theta) = -sqrt(5)/2
+      const CYL_THETA_BOT = Math.atan2(-Math.sqrt(5), 2);
+      const CYL_THETA_TOP = CYL_THETA_BOT + Math.PI;
+
+      // =========================================================================
+      // 4. POLYGON & 3D CYLINDER PRIMITIVE HELPERS
+      // =========================================================================
+      function tracePoly(pts) {
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].x, pts[i].y);
+        }
+        ctx.closePath();
+      }
+
+      function fillAndStrokePoly(pts, fillStyle, strokeStyle = INK, lineWidth = STROKE_MAIN) {
+        tracePoly(pts);
+        if (fillStyle) {
+          ctx.fillStyle = fillStyle;
+          ctx.fill();
+        }
+        if (strokeStyle && lineWidth > 0) {
+          ctx.strokeStyle = strokeStyle;
+          ctx.lineWidth = lineWidth;
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+          ctx.stroke();
+        }
+      }
+
+      /**
+       * Draws a true 3D projected cylinder aligned along the Y axis from yBack (-Y, toward viewer)
+       * to yFront (+Y, attaching into body) with exact analytical silhouette outlines.
+       */
+      function drawYAxisCylinder(yBack, yFront, radius, showFrontCap, gradStops) {
+        const steps = 28;
+        const pTopFront = proj(radius * Math.cos(CYL_THETA_TOP), yFront, CENTER_Z + radius * Math.sin(CYL_THETA_TOP));
+        const pBotFront = proj(radius * Math.cos(CYL_THETA_BOT), yFront, CENTER_Z + radius * Math.sin(CYL_THETA_BOT));
+        const pTopBack = proj(radius * Math.cos(CYL_THETA_TOP), yBack, CENTER_Z + radius * Math.sin(CYL_THETA_TOP));
+        const pBotBack = proj(radius * Math.cos(CYL_THETA_BOT), yBack, CENTER_Z + radius * Math.sin(CYL_THETA_BOT));
+
+        // Subtle grayscale shading perpendicular to cylinder axis
+        const grad = ctx.createLinearGradient(pTopFront.x, pTopFront.y, pBotFront.x, pBotFront.y);
+        grad.addColorStop(0.0, gradStops[0]);
+        grad.addColorStop(0.48, gradStops[1]);
+        grad.addColorStop(1.0, gradStops[2]);
+
+        // Closed convex cylinder barrel silhouette
+        ctx.beginPath();
+        ctx.moveTo(pTopBack.x, pTopBack.y);
+        ctx.lineTo(pTopFront.x, pTopFront.y);
+        // Visible front junction arc at yFront (+X / +Z side facing camera)
+        for (let i = 1; i <= steps; i++) {
+          const theta = CYL_THETA_TOP - (i / steps) * Math.PI;
+          const pt = proj(radius * Math.cos(theta), yFront, CENTER_Z + radius * Math.sin(theta));
+          ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.lineTo(pBotBack.x, pBotBack.y);
+        // Outer back rim arc at yBack (-X / -Z side)
+        for (let i = 1; i <= steps; i++) {
+          const theta = CYL_THETA_BOT - (i / steps) * Math.PI;
+          const pt = proj(radius * Math.cos(theta), yBack, CENTER_Z + radius * Math.sin(theta));
+          ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.closePath();
+
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Crisp ink silhouette outlines along top, front junction, and bottom
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = STROKE_MAIN;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pTopBack.x, pTopBack.y);
+        ctx.lineTo(pTopFront.x, pTopFront.y);
+        for (let i = 1; i <= steps; i++) {
+          const theta = CYL_THETA_TOP - (i / steps) * Math.PI;
+          const pt = proj(radius * Math.cos(theta), yFront, CENTER_Z + radius * Math.sin(theta));
+          ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.lineTo(pBotBack.x, pBotBack.y);
+        ctx.stroke();
+
+        // Optional visible elliptical end cap facing viewer (-Y) for stepped strain-relief collar
+        if (showFrontCap) {
+          ctx.beginPath();
+          for (let i = 0; i <= steps * 2; i++) {
+            const theta = (i / (steps * 2)) * Math.PI * 2;
+            const pt = proj(radius * Math.cos(theta), yBack, CENTER_Z + radius * Math.sin(theta));
+            if (i === 0) ctx.moveTo(pt.x, pt.y);
+            else ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.closePath();
+          ctx.fillStyle = '#e5e5e5';
+          ctx.fill();
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = STROKE_MAIN;
+          ctx.stroke();
+        }
+      }
+
+      // =========================================================================
+      // 5. SCENE RENDERING LAYERS
+      // =========================================================================
+
+      /**
+       * Draws full-bleed subtle directional off-white/light-gray desk backdrop
+       */
+      function drawDeskBackdrop() {
+        ctx.save();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const bgGrad = ctx.createLinearGradient(0, 0, viewW, viewH);
+        bgGrad.addColorStop(0.0, '#f2f2f2');
+        bgGrad.addColorStop(0.55, '#f7f7f7');
+        bgGrad.addColorStop(1.0, '#fafafa');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, viewW, viewH);
+        ctx.restore();
+      }
+
+      /**
+       * Draws grounded soft cast shadows on the desk surface (z = 0)
+       * moving seamlessly with the USB plug, metallic tip, and cable.
+       */
+      function drawCastShadows(usbSlide) {
+        ctx.save();
+
+        // 1. Soft shadow beneath laptop side wall
+        ctx.filter = `blur(${Math.max(6, 13 * fitScale)}px)`;
+        tracePoly([
+          proj(LAPTOP_X_MIN - 10, -30, 0),
+          proj(LAPTOP_X_MAX, -30, 0),
+          proj(LAPTOP_X_MAX, 24, 0),
+          proj(LAPTOP_X_MIN - 10, 24, 0)
+        ]);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.13)';
+        ctx.fill();
+
+        // 2. Grounded moving cast shadow beneath USB plug & tip
+        const yBodyFront = usbSlide;
+        const yBodyBack = usbSlide - BODY_TOTAL_LEN;
+        const yChamfer = yBodyBack + BODY_CHAMFER_LEN;
+        const yTipEnd = Math.min(usbSlide + METAL_LEN, Y_WALL + 4);
+        const yCableEnd = yBodyBack - COLLAR_LEN - CABLE_END_OFFSET;
+
+        // Subtle overhead gallery light offset on desk plane
+        const ox = 10;
+        const oy = -14;
+        const hw = BODY_W * 0.5;
+        const hbw = BODY_BACK_W * 0.5;
+
+        ctx.filter = `blur(${Math.max(5, 12 * fitScale)}px)`;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.155)';
+        tracePoly([
+          proj(-hw + ox, yBodyFront + oy, 0),
+          proj(-hw + ox, yChamfer + oy, 0),
+          proj(-hbw + ox, yBodyBack + oy, 0),
+          proj(hbw + ox, yBodyBack + oy, 0),
+          proj(hw + ox, yChamfer + oy, 0),
+          proj(hw + ox, yBodyFront + oy, 0)
+        ]);
+        ctx.fill();
+
+        // Shadow of protruding metallic connector (retracts as tip enters port)
+        if (yTipEnd > yBodyFront + 2) {
+          const mw = METAL_W * 0.48;
+          tracePoly([
+            proj(-mw + ox, yBodyFront + oy, 0),
+            proj(mw + ox, yBodyFront + oy, 0),
+            proj(mw + ox, yTipEnd + oy, 0),
+            proj(-mw + ox, yTipEnd + oy, 0)
+          ]);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+          ctx.fill();
+        }
+
+        // Shadow beneath strain-relief collar & white cable
+        ctx.filter = `blur(${Math.max(4, 9 * fitScale)}px)`;
+        const cw = CABLE_R * 1.15;
+        tracePoly([
+          proj(-cw + ox, yBodyBack - 4 + oy, 0),
+          proj(cw + ox, yBodyBack - 4 + oy, 0),
+          proj(cw + ox, yCableEnd + oy, 0),
+          proj(-cw + ox, yCableEnd + oy, 0)
+        ]);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.11)';
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      /**
+       * Draws one recessed 3D USB-A port cavity at x = xc with inner recessed walls
+       * and internal USB-A tongue detail.
+       */
+      function drawPortInterior(xc) {
+        const x0 = xc - PORT_W * 0.5;
+        const x1 = xc + PORT_W * 0.5;
+        const y0 = Y_WALL;
+        const y1 = Y_WALL + PORT_DEPTH;
+        const z0 = PORT_Z0;
+        const z1 = PORT_Z1;
+
+        const mouth = [
+          proj(x0, y0, z1),
+          proj(x1, y0, z1),
+          proj(x1, y0, z0),
+          proj(x0, y0, z0)
+        ];
+
+        ctx.save();
+        tracePoly(mouth);
+        ctx.clip();
+
+        // Deep cavity base fill
+        fillAndStrokePoly(mouth, '#3b3b3b', null, 0);
+
+        // Recessed back wall (y = y1)
+        fillAndStrokePoly(
+          [
+            proj(x0, y1, z1),
+            proj(x1, y1, z1),
+            proj(x1, y1, z0),
+            proj(x0, y1, z0)
+          ],
+          '#323232',
+          null,
+          0
+        );
+
+        // Inner bottom floor (+Z)
+        const floorGrad = ctx.createLinearGradient(
+          proj(x0, y1, z0).x,
+          proj(x0, y1, z0).y,
+          proj(x1, y0, z0).x,
+          proj(x1, y0, z0).y
+        );
+        floorGrad.addColorStop(0, '#8e8e8e');
+        floorGrad.addColorStop(1, '#c4c4c4');
+        fillAndStrokePoly(
+          [
+            proj(x0, y0, z0),
+            proj(x1, y0, z0),
+            proj(x1, y1, z0),
+            proj(x0, y1, z0)
+          ],
+          floorGrad,
+          INK,
+          STROKE_INNER
+        );
+
+        // Inner left wall (+X)
+        fillAndStrokePoly(
+          [
+            proj(x0, y0, z0),
+            proj(x0, y1, z0),
+            proj(x0, y1, z1),
+            proj(x0, y0, z1)
+          ],
+          '#6f6f6f',
+          INK,
+          STROKE_INNER
+        );
+
+        // Internal USB-A tongue (upper recessed contact block)
+        const ty0 = y0 + 14;
+        const ty1 = y1;
+        const tx0 = x0 + 6;
+        const tx1 = x1 - 6;
+        const tz0 = z0 + 21;
+        const tz1 = z0 + 33;
+
+        // Shadowed upper slot above tongue
+        fillAndStrokePoly(
+          [
+            proj(x0, ty0, tz1),
+            proj(x1, ty0, tz1),
+            proj(x1, ty0, z1),
+            proj(x0, ty0, z1)
+          ],
+          '#2a2a2a',
+          null,
+          0
+        );
+
+        // Tongue top face (+Z)
+        fillAndStrokePoly(
+          [
+            proj(tx0, ty0, tz1),
+            proj(tx1, ty0, tz1),
+            proj(tx1, ty1, tz1),
+            proj(tx0, ty1, tz1)
+          ],
+          '#9e9e9e',
+          INK,
+          1.35
+        );
+
+        // Tongue front face (-Y)
+        fillAndStrokePoly(
+          [
+            proj(tx0, ty0, tz0),
+            proj(tx1, ty0, tz0),
+            proj(tx1, ty0, tz1),
+            proj(tx0, ty0, tz1)
+          ],
+          '#7b7b7b',
+          INK,
+          1.45
+        );
+
+        ctx.restore();
+      }
+
+      /**
+       * Draws the laptop casing (light metallic gray top surface, beveled front-left
+       * side wall with crisp #111 ink outlines and 3 recessed USB-A ports).
+       */
+      function drawLaptopChassis() {
+        // 1. Render interiors of all 3 ports
+        for (let i = 0; i < PORT_CENTERS_X.length; i++) {
+          drawPortInterior(PORT_CENTERS_X[i]);
+        }
+
+        // 2. Front-left vertical side wall with 3 port cutouts via evenodd fill
+        const wallGrad = ctx.createLinearGradient(
+          proj(0, Y_WALL, LAPTOP_H).x,
+          proj(0, Y_WALL, LAPTOP_H).y,
+          proj(0, Y_WALL, 0).x,
+          proj(0, Y_WALL, 0).y
+        );
+        wallGrad.addColorStop(0.0, '#e0e0e0');
+        wallGrad.addColorStop(0.76, '#d1d1d1');
+        wallGrad.addColorStop(1.0, '#bebebe');
+
+        const wTL = proj(LAPTOP_X_MIN, Y_WALL, LAPTOP_H);
+        const wTR = proj(LAPTOP_X_MAX, Y_WALL, LAPTOP_H);
+        const wBR = proj(LAPTOP_X_MAX, Y_WALL, 0);
+        const wBL = proj(LAPTOP_X_MIN, Y_WALL, 0);
+
+        ctx.beginPath();
+        ctx.moveTo(wTL.x, wTL.y);
+        ctx.lineTo(wTR.x, wTR.y);
+        ctx.lineTo(wBR.x, wBR.y);
+        ctx.lineTo(wBL.x, wBL.y);
+        ctx.closePath();
+
+        for (let i = 0; i < PORT_CENTERS_X.length; i++) {
+          const xc = PORT_CENTERS_X[i];
+          const pTL = proj(xc - PORT_W * 0.5, Y_WALL, PORT_Z1);
+          const pTR = proj(xc + PORT_W * 0.5, Y_WALL, PORT_Z1);
+          const pBR = proj(xc + PORT_W * 0.5, Y_WALL, PORT_Z0);
+          const pBL = proj(xc - PORT_W * 0.5, Y_WALL, PORT_Z0);
+          ctx.moveTo(pTL.x, pTL.y);
+          ctx.lineTo(pTR.x, pTR.y);
+          ctx.lineTo(pBR.x, pBR.y);
+          ctx.lineTo(pBL.x, pBL.y);
+          ctx.closePath();
+        }
+
+        ctx.fillStyle = wallGrad;
+        ctx.fill('evenodd');
+
+        // Subtle beveled lower edge shading strip along bottom of side wall
+        fillAndStrokePoly(
+          [
+            proj(LAPTOP_X_MIN, Y_WALL, 10),
+            proj(LAPTOP_X_MAX, Y_WALL, 10),
+            proj(LAPTOP_X_MAX, Y_WALL, 0),
+            proj(LAPTOP_X_MIN, Y_WALL, 0)
+          ],
+          'rgba(0, 0, 0, 0.08)',
+          null,
+          0
+        );
+
+        // Crisp side wall border strokes
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = STROKE_MAIN;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(wTL.x, wTL.y);
+        ctx.lineTo(wTR.x, wTR.y);
+        ctx.moveTo(wBR.x, wBR.y);
+        ctx.lineTo(wBL.x, wBL.y);
+        ctx.lineTo(wTL.x, wTL.y);
+        ctx.stroke();
+
+        // Crisp port bezel outlines for all 3 ports
+        for (let i = 0; i < PORT_CENTERS_X.length; i++) {
+          const xc = PORT_CENTERS_X[i];
+          const pTL = proj(xc - PORT_W * 0.5, Y_WALL, PORT_Z1);
+          const pTR = proj(xc + PORT_W * 0.5, Y_WALL, PORT_Z1);
+          const pBR = proj(xc + PORT_W * 0.5, Y_WALL, PORT_Z0);
+          const pBL = proj(xc - PORT_W * 0.5, Y_WALL, PORT_Z0);
+          tracePoly([pTL, pTR, pBR, pBL]);
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = STROKE_MAIN;
+          ctx.stroke();
+        }
+
+        // 3. Light metallic gray top surface (z = LAPTOP_H)
+        const topGrad = ctx.createLinearGradient(
+          proj(LAPTOP_X_MIN, Y_WALL, LAPTOP_H).x,
+          proj(LAPTOP_X_MIN, Y_WALL, LAPTOP_H).y,
+          proj(400, 480, LAPTOP_H).x,
+          proj(400, 480, LAPTOP_H).y
+        );
+        topGrad.addColorStop(0.0, '#d5d5d5');
+        topGrad.addColorStop(1.0, '#c4c4c4');
+
+        fillAndStrokePoly(
+          [
+            proj(LAPTOP_X_MIN, Y_WALL, LAPTOP_H),
+            proj(LAPTOP_X_MAX, Y_WALL, LAPTOP_H),
+            proj(LAPTOP_X_MAX, LAPTOP_Y_MAX, LAPTOP_H),
+            proj(LAPTOP_X_MIN, LAPTOP_Y_MAX, LAPTOP_H)
+          ],
+          topGrad,
+          INK,
+          STROKE_MAIN
+        );
+      }
+
+      /**
+       * Draws the metallic gray USB-A connector tip with exact 3D occlusion clipping
+       * along the inner opening plane of the middle USB port (Port 2).
+       */
+      function drawMetallicConnectorTip(usbSlide) {
+        const y0 = usbSlide;
+        const y1 = usbSlide + METAL_LEN;
+        const x0 = -METAL_W * 0.5;
+        const x1 = METAL_W * 0.5;
+        const z0 = METAL_Z0;
+        const z1 = METAL_Z1;
+
+        // Exact middle port rim corners at y = Y_WALL
+        const pTL = proj(-PORT_W * 0.5, Y_WALL, PORT_Z1);
+        const pTR = proj(+PORT_W * 0.5, Y_WALL, PORT_Z1);
+        const pBR = proj(+PORT_W * 0.5, Y_WALL, PORT_Z0);
+
+        // Exact 3D occlusion polygon:
+        // Clipped cleanly against Port 2's top lip (pTL -> pTR) and right lip (pTR -> pBR)
+        // so the connector never bleeds over the laptop casing as it slides inside.
+        const far = 3000;
+        const farTopLeft = { x: pTL.x - UX * far, y: pTL.y - UY * far };
+        const farBotRight = { x: pBR.x + UX * far, y: pBR.y + UY * far };
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(farTopLeft.x, farTopLeft.y);
+        ctx.lineTo(pTL.x, pTL.y);
+        ctx.lineTo(pTR.x, pTR.y);
+        ctx.lineTo(pBR.x, pBR.y);
+        ctx.lineTo(farBotRight.x, farBotRight.y);
+        ctx.lineTo(LOGICAL_W + far, LOGICAL_H + far);
+        ctx.lineTo(-far, LOGICAL_H + far);
+        ctx.closePath();
+        ctx.clip();
+
+        // 1. Right vertical side face (+X, darker metallic gray)
+        const sideGrad = ctx.createLinearGradient(
+          proj(x1, y0, z1).x,
+          proj(x1, y0, z1).y,
+          proj(x1, y0, z0).x,
+          proj(x1, y0, z0).y
+        );
+        sideGrad.addColorStop(0.0, '#929292');
+        sideGrad.addColorStop(1.0, '#787878');
+
+        fillAndStrokePoly(
+          [
+            proj(x1, y0, z1),
+            proj(x1, y1, z1),
+            proj(x1, y1, z0),
+            proj(x1, y0, z0)
+          ],
+          sideGrad,
+          INK,
+          STROKE_MAIN
+        );
+
+        // 2. Top horizontal metallic face (+Z)
+        const topGrad = ctx.createLinearGradient(
+          proj(x0, y0, z1).x,
+          proj(x0, y0, z1).y,
+          proj(x1, y1, z1).x,
+          proj(x1, y1, z1).y
+        );
+        topGrad.addColorStop(0.0, '#cbcbcb');
+        topGrad.addColorStop(0.58, '#b9b9b9');
+        topGrad.addColorStop(1.0, '#a8a8a8');
+
+        fillAndStrokePoly(
+          [
+            proj(x0, y0, z1),
+            proj(x1, y0, z1),
+            proj(x1, y1, z1),
+            proj(x0, y1, z1)
+          ],
+          topGrad,
+          INK,
+          STROKE_MAIN
+        );
+
+        // 3. Two recessed dark square holes projected in exact 3D on top face
+        const holeSize = 18;
+        const holeDepth = 4.5;
+        const holeY = y0 + METAL_LEN * 0.56;
+        const holeXs = [-22, 22];
+
+        for (let i = 0; i < holeXs.length; i++) {
+          const hx = holeXs[i];
+          const hx0 = hx - holeSize * 0.5;
+          const hx1 = hx + holeSize * 0.5;
+          const hy0 = holeY - holeSize * 0.5;
+          const hy1 = holeY + holeSize * 0.5;
+
+          const hPoly = [
+            proj(hx0, hy0, z1),
+            proj(hx1, hy0, z1),
+            proj(hx1, hy1, z1),
+            proj(hx0, hy1, z1)
+          ];
+
+          fillAndStrokePoly(hPoly, '#484848', null, 0);
+
+          ctx.save();
+          tracePoly(hPoly);
+          ctx.clip();
+          // Back shadowed edge inside hole
+          fillAndStrokePoly(
+            [
+              proj(hx0, hy1, z1),
+              proj(hx1, hy1, z1),
+              proj(hx1, hy1, z1 - holeDepth),
+              proj(hx0, hy1, z1 - holeDepth)
+            ],
+            '#292929',
+            null,
+            0
+          );
+          // Left recessed bevel inside hole
+          fillAndStrokePoly(
+            [
+              proj(hx0, hy0, z1),
+              proj(hx0, hy1, z1),
+              proj(hx0, hy1, z1 - holeDepth),
+              proj(hx0, hy0, z1 - holeDepth)
+            ],
+            '#6e6e6e',
+            null,
+            0
+          );
+          ctx.restore();
+
+          fillAndStrokePoly(hPoly, null, INK, 1.6);
+        }
+
+        ctx.restore();
+
+        // 4. Re-stroke middle port's upper & right rim sharply on top of connector
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = STROKE_MAIN + 0.3;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pTL.x, pTL.y);
+        ctx.lineTo(pTR.x, pTR.y);
+        ctx.lineTo(pBR.x, pBR.y);
+        ctx.stroke();
+      }
+
+      /**
+       * Projects the light-gray USB trident symbol accurately in 3D onto the
+       * top face (z = BODY_Z1) of the white USB housing.
+       */
+      function drawProjectedUsbTrident(yCenter) {
+        const z = BODY_Z1;
+        const iconColor = '#bdbdbd';
+        const pt = (u, v) => proj(u, yCenter + v, z);
+
+        const drawCircleOnTop = (cx, cy, r) => {
+          const segs = 16;
+          ctx.beginPath();
+          for (let i = 0; i <= segs; i++) {
+            const a = (i / segs) * Math.PI * 2;
+            const p = pt(cx + r * Math.cos(a), cy + r * Math.sin(a));
+            if (i === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+          }
+          ctx.closePath();
+          ctx.fill();
+        };
+
+        ctx.save();
+        ctx.strokeStyle = iconColor;
+        ctx.fillStyle = iconColor;
+        ctx.lineWidth = 2.55;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Central shaft
+        const s0 = pt(0, -34);
+        const s1 = pt(0, 32);
+        ctx.beginPath();
+        ctx.moveTo(s0.x, s0.y);
+        ctx.lineTo(s1.x, s1.y);
+        ctx.stroke();
+
+        // Base circle
+        drawCircleOnTop(0, -36, 5.7);
+
+        // Front arrow head
+        tracePoly([pt(0, 41), pt(-7.2, 29), pt(7.2, 29)]);
+        ctx.fill();
+
+        // Left branch ending with small circle
+        const lb0 = pt(0, -16);
+        const lb1 = pt(-18, -4);
+        const lb2 = pt(-18, 12);
+        ctx.beginPath();
+        ctx.moveTo(lb0.x, lb0.y);
+        ctx.lineTo(lb1.x, lb1.y);
+        ctx.lineTo(lb2.x, lb2.y);
+        ctx.stroke();
+        drawCircleOnTop(-18, 14, 4.3);
+
+        // Right branch ending with small square
+        const rb0 = pt(0, -4);
+        const rb1 = pt(18, 8);
+        const rb2 = pt(18, 20);
+        ctx.beginPath();
+        ctx.moveTo(rb0.x, rb0.y);
+        ctx.lineTo(rb1.x, rb1.y);
+        ctx.lineTo(rb2.x, rb2.y);
+        ctx.stroke();
+
+        const sq = 4.2;
+        tracePoly([
+          pt(18 - sq, 20 - sq),
+          pt(18 + sq, 20 - sq),
+          pt(18 + sq, 20 + sq),
+          pt(18 - sq, 20 + sq)
+        ]);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      /**
+       * Draws the beveled white plastic USB plug housing, circular strain-relief collar,
+       * and white cable extending toward the bottom-left.
+       */
+      function drawUsbHousingAndCable(usbSlide) {
+        const yFront = usbSlide;
+        const yBack = usbSlide - BODY_TOTAL_LEN;
+        const yChamfer = yBack + BODY_CHAMFER_LEN;
+        const hw = BODY_W * 0.5;
+        const hbw = BODY_BACK_W * 0.5;
+        const z0 = BODY_Z0;
+        const z1 = BODY_Z1;
+
+        // 6 top and 6 bottom vertices of the angular beveled housing
+        const topV = [
+          proj(-hw, yFront, z1),
+          proj(-hw, yChamfer, z1),
+          proj(-hbw, yBack, z1),
+          proj(hbw, yBack, z1),
+          proj(hw, yChamfer, z1),
+          proj(hw, yFront, z1)
+        ];
+        const botV = [
+          proj(-hw, yFront, z0),
+          proj(-hw, yChamfer, z0),
+          proj(-hbw, yBack, z0),
+          proj(hbw, yBack, z0),
+          proj(hw, yChamfer, z0),
+          proj(hw, yFront, z0)
+        ];
+
+        // 1. Back-left chamfered facet
+        fillAndStrokePoly([topV[1], topV[2], botV[2], botV[1]], '#e9e9e9', INK, STROKE_MAIN);
+
+        // 2. Back face (-Y)
+        fillAndStrokePoly([topV[2], topV[3], botV[3], botV[2]], '#d5d5d5', INK, STROKE_MAIN);
+
+        // 3. Back-right chamfered facet
+        fillAndStrokePoly([topV[3], topV[4], botV[4], botV[3]], '#cacaca', INK, STROKE_MAIN);
+
+        // 4. Right vertical face (+X)
+        const rightGrad = ctx.createLinearGradient(topV[4].x, topV[4].y, botV[4].x, botV[4].y);
+        rightGrad.addColorStop(0.0, '#e3e3e3');
+        rightGrad.addColorStop(1.0, '#d5d5d5');
+        fillAndStrokePoly([topV[4], topV[5], botV[5], botV[4]], rightGrad, INK, STROKE_MAIN);
+
+        // 5. Crisp white top face (+Z)
+        const topGrad = ctx.createLinearGradient(topV[0].x, topV[0].y, topV[4].x, topV[4].y);
+        topGrad.addColorStop(0.0, '#ffffff');
+        topGrad.addColorStop(1.0, '#f7f7f7');
+        fillAndStrokePoly(topV, topGrad, INK, STROKE_MAIN);
+
+        // 6. Projected 3D USB trident icon on top face
+        drawProjectedUsbTrident((yFront + yChamfer) * 0.52);
+
+        // 7. Circular strain-relief collar
+        const collarYBack = yBack - COLLAR_LEN;
+        drawYAxisCylinder(collarYBack, yBack, COLLAR_R, true, ['#f4f4f4', '#dddddd', '#bcbcbc']);
+
+        // 8. White cable extending cleanly off bottom-left
+        const cableYBack = collarYBack - CABLE_END_OFFSET;
+        drawYAxisCylinder(cableYBack, collarYBack, CABLE_R, false, ['#ffffff', '#f1f1f1', '#cecece']);
+      }
+
+      /**
+       * Draws minimal monochrome expanding rings at the port connection point
+       */
+      function drawConnectionRipple(progress) {
+        if (progress <= 0 || progress >= 1) return;
+
+        const center = proj(0, Y_WALL, CENTER_Z);
+        const angle = Math.atan2(UY, UX);
+        const rings = [
+          { delay: 0.0, maxR: 84, lw: 2.2 },
+          { delay: 0.16, maxR: 118, lw: 1.4 }
+        ];
+
+        ctx.save();
+        for (let i = 0; i < rings.length; i++) {
+          const cfg = rings[i];
+          const t = (progress - cfg.delay) / (1 - cfg.delay);
+          if (t <= 0 || t >= 1) continue;
+
+          const ease = 1 - Math.pow(1 - t, 3);
+          const radius = 16 + ease * cfg.maxR;
+          const alpha = (1 - ease) * 0.52;
+
+          ctx.save();
+          ctx.translate(center.x, center.y);
+          ctx.rotate(angle);
+          ctx.scale(1, 0.56);
+          ctx.beginPath();
+          ctx.arc(0, 0, radius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(17, 17, 17, ${alpha.toFixed(3)})`;
+          ctx.lineWidth = cfg.lw * (1 - ease * 0.55);
+          ctx.stroke();
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+
+      // =========================================================================
+      // 6. VIEWPORT SIZING & FULL-SCENE RENDERER
+      // =========================================================================
+      const SLIDE_START = -310;  // Detached starting position
+      const SLIDE_MOUTH = -102;  // Metal tip right at middle port entrance
+      const SLIDE_SEATED = 0;    // White housing seated flush against laptop wall
+
+      let currentUsbSlide = SLIDE_START;
+      let currentRipple = 0;
+
+      function renderScene() {
+        // 1. Full-bleed desk surface gradient
+        drawDeskBackdrop();
+
+        // 2. Apply strict uniform scaling & centering for logical 1200x720 world
+        ctx.save();
+        ctx.setTransform(
+          dpr * fitScale,
+          0,
+          0,
+          dpr * fitScale,
+          dpr * fitOffsetX,
+          dpr * fitOffsetY
+        );
+
+        drawCastShadows(currentUsbSlide);
+        drawLaptopChassis();
+        drawMetallicConnectorTip(currentUsbSlide);
+        drawUsbHousingAndCable(currentUsbSlide);
+        drawConnectionRipple(currentRipple);
+
+        ctx.restore();
+      }
+
+      function handleResize() {
+        viewW = window.innerWidth;
+        viewH = window.innerHeight;
+        dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+
+        canvas.width = Math.round(viewW * dpr);
+        canvas.height = Math.round(viewH * dpr);
+
+        // Strict uniform scaling (contain) so zero distortion occurs on any aspect ratio
+        fitScale = Math.min(viewW / LOGICAL_W, viewH / LOGICAL_H);
+        fitOffsetX = (viewW - LOGICAL_W * fitScale) * 0.5;
+        fitOffsetY = (viewH - LOGICAL_H * fitScale) * 0.5;
+
+        renderScene();
+      }
+
+      window.addEventListener('resize', handleResize);
+
+      // =========================================================================
+      // 7. OPTIONAL WEB AUDIO API MECHANICAL CLICK + DUAL-TONE CHIME
+      // =========================================================================
+      let audioCtx = null;
+
+      function unlockAudio() {
+        try {
+          if (!audioCtx) {
+            const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextCtor) {
+              audioCtx = new AudioContextCtor();
+            }
+          }
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+          }
+        } catch (err) {
+          // Gracefully remain silent if audio API is restricted
+        }
+      }
+
+      function playConnectAudio() {
+        try {
+          if (!audioCtx || audioCtx.state !== 'running') return;
+          const now = audioCtx.currentTime;
+
+          // Subtle mechanical click snap
+          const clickOsc = audioCtx.createOscillator();
+          const clickGain = audioCtx.createGain();
+          clickOsc.type = 'triangle';
+          clickOsc.frequency.setValueAtTime(195, now);
+          clickOsc.frequency.exponentialRampToValueAtTime(50, now + 0.032);
+          clickGain.gain.setValueAtTime(0.1, now);
+          clickGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.038);
+          clickOsc.connect(clickGain);
+          clickGain.connect(audioCtx.destination);
+          clickOsc.start(now);
+          clickOsc.stop(now + 0.042);
+
+          // Minimal clean dual-tone connection chime
+          const tones = [
+            { freq: 587.33, offset: 0.035, dur: 0.14 },
+            { freq: 880.0, offset: 0.14, dur: 0.25 }
+          ];
+          tones.forEach(({ freq, offset, dur }) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + offset);
+            gain.gain.setValueAtTime(0.0005, now + offset);
+            gain.gain.linearRampToValueAtTime(0.06, now + offset + 0.014);
+            gain.gain.exponentialRampToValueAtTime(0.0005, now + offset + dur);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now + offset);
+            osc.stop(now + offset + dur + 0.02);
+          });
+        } catch (err) {
+          // Silent fallback
+        }
+      }
+
+      // =========================================================================
+      // 8. ANIMATION TIMELINE CONTROLLER
+      // =========================================================================
+      // 0.00s - 0.45s: Idle aligned in front of the middle port
+      // 0.45s - 1.35s: Smooth cubic ease-in-out slide toward middle port opening
+      // 1.35s - 1.50s: Subtle tactile micro-pause at port opening
+      // 1.50s - 1.78s: Crisp mechanical push-in with tiny damped settle snap
+      // ~1.75s       : Connection ripple + status pill (`USB CONNECTED // DEBUG_KEY`) + optional audio
+      // ~2.35s       : Automatically open Scene 2 (`./invite.png`) popup overlay
+      let rafId = null;
+      let startTime = 0;
+      let isAnimating = false;
+      let hasConnected = false;
+      let hasOpenedPopup = false;
+
+      function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      }
+
+      function easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+      }
+
+      function stopAnimation() {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        isAnimating = false;
+      }
+
+      function updateControlsVisibility() {
+        const overlayOpen = inviteOverlay.classList.contains('open');
+        if (overlayOpen) {
+          controlsBar.classList.add('dimmed');
+        } else {
+          controlsBar.classList.remove('dimmed');
+        }
+
+        // Show `OPEN INVITATION` button next to `REPLAY` once connected & overlay closed
+        if (hasConnected && !overlayOpen) {
+          btnOpenInvite.classList.remove('hidden-btn');
+        } else {
+          btnOpenInvite.classList.add('hidden-btn');
+        }
+      }
+
+      function openInviteOverlay() {
+        inviteOverlay.classList.add('open');
+        updateControlsVisibility();
+      }
+
+      function closeInviteOverlay() {
+        inviteOverlay.classList.remove('open');
+        updateControlsVisibility();
+      }
+
+      function stepAnimation(now) {
+        const elapsed = (now - startTime) / 1000;
+
+        if (elapsed < 0.45) {
+          // 1. Idle aligned in front of middle port
+          currentUsbSlide = SLIDE_START;
+          currentRipple = 0;
+        } else if (elapsed < 1.35) {
+          // 2. Smooth slide toward port mouth (cubic ease-in-out)
+          const t = (elapsed - 0.45) / (1.35 - 0.45);
+          currentUsbSlide = SLIDE_START + (SLIDE_MOUTH - SLIDE_START) * easeInOutCubic(t);
+          currentRipple = 0;
+        } else if (elapsed < 1.5) {
+          // 3. Tactile micro-pause right at port opening
+          currentUsbSlide = SLIDE_MOUTH;
+          currentRipple = 0;
+        } else if (elapsed < 1.78) {
+          // 4. Crisp mechanical push-in with tiny damped settle snap
+          const t = (elapsed - 1.5) / (1.78 - 1.5);
+          if (t < 0.78) {
+            const u = t / 0.78;
+            currentUsbSlide = SLIDE_MOUTH + (SLIDE_SEATED - SLIDE_MOUTH) * easeOutCubic(u);
+          } else {
+            // Micro damped rebound strictly <= 0 so housing never clips into laptop wall
+            const v = (t - 0.78) / 0.22;
+            const settleOffset = -2.2 * Math.sin(v * Math.PI) * (1 - v);
+            currentUsbSlide = SLIDE_SEATED + settleOffset;
+          }
+        } else {
+          currentUsbSlide = SLIDE_SEATED;
+        }
+
+        // 5. Connection trigger (~1.75s)
+        if (elapsed >= 1.75) {
+          if (!hasConnected) {
+            hasConnected = true;
+            statusPill.classList.add('visible');
+            playConnectAudio();
+            updateControlsVisibility();
+          }
+
+          const rippleT = (elapsed - 1.75) / 0.68;
+          currentRipple = rippleT < 1 ? easeOutCubic(rippleT) : 0;
+        }
+
+        // 6. Auto-open Scene 2 popup ~0.60s after connection (~2.35s total)
+        if (elapsed >= 2.35 && !hasOpenedPopup) {
+          hasOpenedPopup = true;
+          openInviteOverlay();
+        }
+
+        renderScene();
+
+        if (elapsed < 2.55) {
+          rafId = requestAnimationFrame(stepAnimation);
+        } else {
+          currentUsbSlide = SLIDE_SEATED;
+          currentRipple = 0;
+          renderScene();
+          rafId = null;
+          isAnimating = false;
+        }
+      }
+
+      function playSequence() {
+        stopAnimation();
+        closeInviteOverlay();
+        statusPill.classList.remove('visible');
+
+        currentUsbSlide = SLIDE_START;
+        currentRipple = 0;
+        hasConnected = false;
+        hasOpenedPopup = false;
+        isAnimating = true;
+
+        updateControlsVisibility();
+        renderScene();
+
+        startTime = performance.now();
+        rafId = requestAnimationFrame(stepAnimation);
+      }
+
+      // =========================================================================
+      // 9. IMAGE LOAD FALLBACK (NO UPLOAD UI)
+      // =========================================================================
+      inviteImg.addEventListener('error', () => {
+        inviteImg.classList.add('is-missing');
+        missingPlaceholder.classList.add('visible');
+      });
+
+      inviteImg.addEventListener('load', () => {
+        if (inviteImg.naturalWidth > 0) {
+          inviteImg.classList.remove('is-missing');
+          missingPlaceholder.classList.remove('visible');
+        }
+      });
+
+      // =========================================================================
+      // 10. EVENT LISTENERS
+      // =========================================================================
+      btnReplay.addEventListener('click', () => {
+        unlockAudio();
+        playSequence();
+      });
+
+      btnOpenInvite.addEventListener('click', () => {
+        unlockAudio();
+        openInviteOverlay();
+      });
+
+      btnCloseOverlay.addEventListener('click', closeInviteOverlay);
+
+      // Clicking outside the invitation image closes the overlay
+      inviteOverlay.addEventListener('click', (e) => {
+        if (e.target === inviteOverlay) {
+          closeInviteOverlay();
+        }
+      });
+
+      // Pressing Escape closes the overlay
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && inviteOverlay.classList.contains('open')) {
+          closeInviteOverlay();
+        }
+      });
+
+      // =========================================================================
+      // 11. BOOTSTRAP
+      // =========================================================================
+      window.addEventListener('DOMContentLoaded', () => {
+        handleResize();
+        playSequence();
+      });
+    })();
+  </script>
+</body>
+</html>
